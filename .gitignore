@@ -1,0 +1,9 @@
+.snakemake/
+*.assembly.d
+*.fq.gz
+*.fa.sig
+*.fa
+reads/
+smash.k31.cmp
+smash.k31.cmp.labels.txt
+smash_k31-cmp.csv
