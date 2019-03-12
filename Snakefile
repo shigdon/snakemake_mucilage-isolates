@@ -14,7 +14,8 @@ print(r1_dict)
 
 rule all:
     input:
-        expand("{isolate}.fa.sig", isolate=r1_dict.keys())
+        expand("{isolate}.fa.sig", isolate=r1_dict.keys()),
+        "smash_k31-cmp.csv"
 
 rule trim_isolate:
     input:
@@ -66,12 +67,26 @@ rule copy_assembly:
         "cp {wildcards.isolate}.assembly.d/final.contigs.fa {output}"
 
 rule compute_sig:
-    input: "{isolate}.fa"
+    input:
+        "{isolate}.fa"
 
-    output: "{isolate}.fa.sig"
+    output:
+        "{isolate}.fa.sig"
 
-    conda: "sourmash.yml"
+    conda:
+        "sourmash.yml"
 
-    shell: "sourmash compute -k 31 {input} -o {output}"
+    shell:
+        "sourmash compute -k 31 {input} -o {output}"
 
-
+rule compare_sigs:
+    input:
+        expand("{isolate}.fa.sig", isolate=r1_dict.keys())
+    output:
+        "smash.k31.cmp",
+        "smash.k31.cmp.labels.txt",
+        "smash_k31-cmp.csv" 
+    conda:
+        "sourmash.yml"
+    shell: 
+        "sourmash compare -k 31 {input} -o {output[0]} --csv {output[2]}"
