@@ -1,4 +1,7 @@
+shell.executable('/bin/bash')
+
 import glob, os
+
 
 r1_dict = {}
 r1_list = glob.glob('reads/BCW-*_R1.fastq.gz')
@@ -12,30 +15,25 @@ def lookup_isolate(wildcards):
 
 print(r1_dict)
 
+
+outdir = config['outdir'] + 'data/'
+logdir = config['outdir'] + 'log/'
+
+
 rule all:
     input:
-        expand("{isolate}/sourmash/{isolate}.fa.sig", isolate=r1_dict.keys())
+        expand(outdir + "{isolate}/sourmash/{isolate}-k31.sig", isolate=r1_dict.keys())
 
-rule make_isolate_directory:
-    input:
-        lookup_isolate
-    
-    output:
-        directory("{isolate}")
-    
-    shell:
-        "mkdir {wildcards.isolate}"
 
 rule trim_isolate:
     input:
         lookup_isolate
 
     output:
-        directory("{isolate}/trimmomatic"),
-        "{isolate}/trimmomatic/{isolate}.trim_R1.fq.gz",
-        "{isolate}/trimmomatic/{isolate}.orphan_R1.fq.gz",
-        "{isolate}/trimmomatic/{isolate}.trim_R2.fq.gz",
-        "{isolate}/trimmomatic/{isolate}.orphan_R2.fq.gz"
+        outdir + "{isolate}/{isolate}.trim_R1.fq.gz",
+        outdir + "{isolate}/{isolate}.orphan_R1.fq.gz",
+        outdir + "{isolate}/{isolate}.trim_R2.fq.gz",
+        outdir + "{isolate}/{isolate}.orphan_R2.fq.gz"
 
     conda:
         "trimmomatic.yml"
@@ -47,10 +45,7 @@ rule trim_isolate:
         -threads {threads} \
         {input[0]} \
         {input[1]} \
-        {output[1]} \
-        {output[2]} \
-        {output[3]} \
-        {output[4]} \
+        {output} \
         ILLUMINACLIP:TruSeq3-PE-2.fa:2:40:15:8:TRUE \
         LEADING:2 \
         TRAILING:2 \
@@ -59,27 +54,36 @@ rule trim_isolate:
 
 rule assemble_isolate:
     input: 
-        "{isolate}/trimmomatic/{isolate}.trim_R1.fq.gz",
-        "{isolate}/trimmomatic/{isolate}.trim_R2.fq.gz"
+        outdir + "{isolate}/{isolate}.trim_R1.fq.gz",
+        outdir + "{isolate}/{isolate}.trim_R2.fq.gz"
 
     output:
-        directory("{isolate}/megahit")
+        outdir + "{isolate}/megahit"
     
     conda:
         "megahit.yml"
     
-    threads: 8
+    threads: 24
 
     shell:
-        "megahit -1 {input[0]} -2 {input[1]} --out-dir {output} --out-prefix {isolate} -t {threads}"
+        "megahit -1 {input[0]} -2 {input[1]} --out-dir {output} -t {threads}"
+
+rule copy_assembly:
+    input:
+        outdir + "{isolate}/megahit"
+
+    output:
+        outdir + "{isolate}/{isolate}.contigs.fa"
+
+    shell:
+        "cp {input}/final.contigs.fa {output}"
 
 rule compute_sig:
     input:
-        "{isolate}/megahit/{isolate}.fa"
+        outdir + "{isolate}/{isolate}.contigs.fa"
 
     output:
-        directory("{isolate}/sourmash"),
-        "{isolate}/sourmash/{isolate}.fa.sig"
+        outdir + "{isolate}/sourmash/{isolate}-k31.sig"
 
     conda:
         "sourmash.yml"
