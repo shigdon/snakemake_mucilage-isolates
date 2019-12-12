@@ -1,11 +1,11 @@
 import glob, os
 
 r1_dict = {}
-r1_list = glob.glob('reads/*_*_*_R1_*.fastq.gz')
+r1_list = glob.glob('reads/BCW-*_R1.fastq.gz')
 
 for name in r1_list:
     i = os.path.basename(name).split('_')[0]
-    r1_dict[i] = (name, name.replace('_R1_', '_R2_'))
+    r1_dict[i] = (name, name.replace('_R1', '_R2'))
 
 def lookup_isolate(wildcards):
    return r1_dict[wildcards.isolate]
@@ -48,7 +48,7 @@ rule assemble_isolate:
         "{isolate}.trim_R2.fq.gz"
 
     output:
-        directory("{isolate}.assembly.d")
+        "{isolate}.assembly.d"
     
     conda:
         "megahit.yml"
