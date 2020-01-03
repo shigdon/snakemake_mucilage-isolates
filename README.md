@@ -25,7 +25,7 @@ hmmpress Pfam-A.hmm
 
 ```
 
-Then. set the absolute path for the pfam database on the system in `config.json`.
+Then, set the absolute path for the pfam database on the system in `config.json`.
 
 ## Execute
 
