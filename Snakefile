@@ -1,5 +1,7 @@
 shell.executable('/bin/bash')
 
+localrules: all, copy_assembly, compute_sig
+
 import glob, os
 
 
