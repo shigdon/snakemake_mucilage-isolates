@@ -1,6 +1,6 @@
 shell.executable('/bin/bash')
 
-localrules: all, copy_assembly, compute_sig
+localrules: all, copy_assembly, compute_sig, copy_sigs, compare_sigs
 
 import glob, os
 
@@ -20,12 +20,14 @@ print(r1_dict)
 
 outdir = config['outdir'] + 'data/'
 logdir = config['outdir'] + 'log/'
-
+analysis_dir = config['outdir'] + 'analysis/'
 
 rule all:
     input:
-        expand(outdir + "{isolate}/sourmash/{isolate}-k31.sig", isolate=r1_dict.keys()),
-        expand(outdir + "{isolate}/prokka", isolate=r1_dict.keys())
+        expand(outdir + "{isolate}/sourmash/{isolate}.sig", isolate=r1_dict.keys()),
+        expand(outdir + "{isolate}/prokka", isolate=r1_dict.keys()),
+        expand(outdir + "{isolate}/quast", isolate=r1_dict.keys()),
+        analysis_dir + "sourmash/smash_k31-cmp.csv"
 
 rule trim_isolate:
     input:
@@ -43,7 +45,7 @@ rule trim_isolate:
     conda:
         "trimmomatic.yml"
 
-    threads: 24
+    threads: 8
 
     shell:
         "trimmomatic PE \
@@ -69,7 +71,7 @@ rule assemble_isolate:
     conda:
         "megahit.yml"
     
-    threads: 24
+    threads: 8
 
     shell:
         "megahit \
@@ -88,6 +90,24 @@ rule copy_assembly:
     shell:
         "cp {input}/final.contigs.fa {output}"
 
+rule quast:
+    input:
+        outdir + "{isolate}/{isolate}.contigs.fa"
+
+    output:
+        outdir + "{isolate}/quast"
+
+    conda:
+        "quast.yml"
+
+    threads: 4
+
+    shell:
+        "quast.py \
+            {input} \
+            --output-dir {output} \
+            --labels {wildcards.isolate}"
+
 rule prokka_annotation:
     input:
         outdir + "{isolate}/{isolate}.contigs.fa"
@@ -98,7 +118,7 @@ rule prokka_annotation:
     conda:
         "prokka.yml"
 
-    threads: 24
+    threads: 8
 
     shell:
         "prokka \
@@ -113,10 +133,33 @@ rule compute_sig:
         outdir + "{isolate}/{isolate}.contigs.fa"
 
     output:
-        outdir + "{isolate}/sourmash/{isolate}-k31.sig"
+        outdir + "{isolate}/sourmash/{isolate}.sig"
 
     conda:
         "sourmash.yml"
 
     shell:
         "sourmash compute -k 31 --scaled 2000 {input} -o {output}"
+
+rule copy_sigs:
+    input:
+        outdir + "{isolate}/sourmash/{isolate}.sig"
+
+    output:
+        analysis_dir + "sourmash/{isolate}.sig"
+
+    shell:
+        "cp {input} {output}"
+
+rule compare_sigs:
+    input:
+        expand(analysis_dir + "sourmash/{isolate}.sig", isolate=r1_dict.keys())
+    output:
+        analysis_dir + "sourmash/smash.k31.cmp",
+        analysis_dir + "sourmash/smash.k31.cmp.labels.txt",
+        analysis_dir + "sourmash/smash_k31-cmp.csv" 
+    conda:
+        "sourmash.yml"
+    shell: 
+        "sourmash compare -k 31 {input} -o {output[0]} --csv {output[2]}"
+
