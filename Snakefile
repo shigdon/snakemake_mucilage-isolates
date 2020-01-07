@@ -27,6 +27,7 @@ rule all:
         expand(outdir + "{isolate}/sourmash/{isolate}.sig", isolate=r1_dict.keys()),
         expand(outdir + "{isolate}/prokka", isolate=r1_dict.keys()),
         expand(outdir + "{isolate}/quast", isolate=r1_dict.keys()),
+        analysis_dir + "roary",
         analysis_dir + "sourmash/smash_k31-cmp.csv"
 
 rule trim_isolate:
@@ -126,6 +127,27 @@ rule prokka_annotation:
             --prefix {wildcards.isolate} \
             --locustag {wildcards.isolate} \
             --cpus 24 \
+            {input}"
+
+rule roary:
+    input:
+        expand(outdir + "{isolate}/prokka/{isolate}.gff", isolate=r1_dict.keys())
+    
+    output:
+        analysis_dir + "roary"
+    
+    conda:
+        "roary.yml"
+
+    threads: 24
+
+    shell:
+        "roary \
+            -e \
+            -p {threads} \
+            -i 95 \
+            -f {output} \
+            -o clustered_proteins \
             {input}"
 
 rule compute_sig:
